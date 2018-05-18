@@ -1,0 +1,12 @@
+FROM mysql
+
+ENV MYSQL_ROOT_PASSWORD mypassword
+
+RUN mkdir /usr/sql
+RUN chmod 644 /usr/sql
+
+COPY db/schema.sql /usr/sql/schema.sql
+
+RUN  \
+   mysql -p 3306 -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} < /usr/sql/schema.sql && \
+   rm -rd /usr/sql
