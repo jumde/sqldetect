@@ -1,37 +1,42 @@
 package main
 
 import (
-	"fmt"
 	"bufio"
+	"fmt"
 	"io"
 	"log"
-	"os"
+	"os/exec"
 )
 
 func main() {
-	nBytes, nChunks := int64(0), int64(0)
-	r := bufio.NewReader(os.Stdin)
-	buf := make([]byte, 0, 4*1024)
-	for {
-		n, err := r.Read(buf[:cap(buf)])
-		s := string(buf[:n])
-		buf = buf[:n]
-		if n == 0 {
-			if err == nil {
-				continue
+	fmt.Println("SQLi Detector is running...")
+
+	pr, pw := io.Pipe()
+	defer pw.Close()
+
+	// tell the command to write to our pipe
+	cmd := exec.Command("tshark", "-i", "docker0", "-Y", "mysql.command==3", "-T", "fields", "-e", "mysql.query")
+	cmd.Stdout = pw
+
+	go func() {
+		defer pr.Close()
+		r := bufio.NewReader(pr)
+		for {
+			line, _, err := r.ReadLine()
+			// process buf
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
 			}
-			if err == io.EOF {
-				break
-			}
-			log.Fatal(err)
+			// s is the sql statement passed in from tshark
+			fp := fingerprintSQL(string(line))
+			fmt.Println(fp.StatementFP)
 		}
-		nChunks++
-		nBytes += int64(len(buf))
-		// process buf
-		if err != nil && err != io.EOF {
-			log.Fatal(err)
-		}
-		fmt.Println(s)
+
+	}()
+
+	// run the command, which writes all output to the PipeWriter
+	// which then ends up in the PipeReader
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
 	}
-	log.Println("Bytes:", nBytes, "Chunks:", nChunks)
 }
