@@ -1,3 +1,4 @@
 *.swp
 sqlidetect
 .idea
+./container/bin/sqlidetect
