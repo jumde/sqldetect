@@ -1,37 +1,25 @@
 package main
 
 import (
-	"fmt"
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
 )
 
 func main() {
-	nBytes, nChunks := int64(0), int64(0)
+	fmt.Println("SQLi Detector is running...")
 	r := bufio.NewReader(os.Stdin)
-	buf := make([]byte, 0, 4*1024)
 	for {
-		n, err := r.Read(buf[:cap(buf)])
-		s := string(buf[:n])
-		buf = buf[:n]
-		if n == 0 {
-			if err == nil {
-				continue
-			}
-			if err == io.EOF {
-				break
-			}
-			log.Fatal(err)
-		}
-		nChunks++
-		nBytes += int64(len(buf))
+		line, _, err := r.ReadLine()
 		// process buf
 		if err != nil && err != io.EOF {
+			//			log.Println(s)
 			log.Fatal(err)
 		}
-		fmt.Println(s)
+		// s is the sql statement passed in from tshark
+		fp := fingerprintSQL(string(line))
+		fmt.Println(fp.StatementFP)
 	}
-	log.Println("Bytes:", nBytes, "Chunks:", nChunks)
 }
